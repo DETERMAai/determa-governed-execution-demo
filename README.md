@@ -1,8 +1,13 @@
 # DETERMA Governed Execution Demo
 
+![Status](https://img.shields.io/badge/status-public_showcase-blue)
+![Demo](https://img.shields.io/badge/demo-governed_execution-success)
+![Runtime](https://img.shields.io/badge/runtime-fail_closed-critical)
+![Scope](https://img.shields.io/badge/scope-public_proof-lightgrey)
+
 Public showcase for governed AI execution.
 
-AI systems can generate actions. DETERMA demonstrates how an execution boundary can govern whether those actions are allowed to mutate real systems.
+DETERMA demonstrates how AI generated actions can be governed before they are allowed to mutate real systems.
 
 ---
 
@@ -28,57 +33,6 @@ Unsafe replay attempts fail closed.
 
 ---
 
-## What This Repository Is
-
-This repository is the public DETERMA showcase.
-
-It is designed for:
-
-- product exploration
-- demo review
-- technical introduction
-- design partner onboarding
-- public explanation of governed execution
-
----
-
-## What This Repository Is Not
-
-This repository is not the full internal DETERMA system.
-
-It does not contain the complete private architecture, internal planning materials, private diligence materials, or full implementation roadmap.
-
-Those materials are maintained separately and shared selectively with qualified partners.
-
----
-
-## Why Govern Execution
-
-Most AI systems focus on generation, orchestration, observability, or prompt controls.
-
-DETERMA focuses on a different question:
-
-```text
-Should this specific machine generated action be allowed to execute now?
-```
-
-That question matters when AI systems begin to modify code, infrastructure, workflows, data, permissions, or operational systems.
-
----
-
-## Public Demo Focus
-
-The public demo layer focuses on:
-
-- governed code mutation
-- approval constrained execution
-- replay blocking behavior
-- append only lineage concepts
-- runtime verification
-- fail closed execution behavior
-
----
-
 ## Public Architecture Flow
 
 ```text
@@ -99,22 +53,89 @@ Lineage record
 
 ---
 
-## Public Repository Scope
+## Why Governed Execution
+
+Most AI systems today focus on:
+
+- generation
+- orchestration
+- observability
+- copilots
+- prompt controls
+
+DETERMA focuses on a different question:
+
+```text
+Should this specific machine generated action be allowed to execute now?
+```
+
+That question becomes critical when AI systems begin modifying:
+
+- code
+- infrastructure
+- workflows
+- operational systems
+- permissions
+- runtime state
+
+---
+
+## Public Demo Focus
+
+The public showcase currently demonstrates:
+
+- governed code mutation
+- constrained execution
+- replay blocking behavior
+- append only lineage concepts
+- runtime verification
+- fail closed execution behavior
+
+---
+
+## Documentation
+
+| Document | Purpose |
+|---|---|
+| `docs/DEMO_OVERVIEW.md` | Public demo walkthrough |
+| `docs/PUBLIC_ARCHITECTURE.md` | High level architecture overview |
+| `docs/PRESENTATION.md` | Public presentation layer |
+| `docs/GETTING_STARTED.md` | Quick onboarding |
+| `docs/FAQ.md` | Common questions |
+| `docs/SECURITY_MODEL.md` | Public security model |
+| `docs/PUBLIC_SCOPE.md` | Public vs private scope |
+
+---
+
+## Repository Scope
 
 Public equals proof.
 
 Private equals full authority system.
 
-This repository is intentionally scoped as a public proof and demo layer.
+This repository intentionally contains only the public governed execution showcase layer.
 
 ---
 
-## Status
-
-Current status:
+## Public Roadmap
 
 ```text
-Public governed execution showcase
+Phase 1 — Public governed execution showcase
+Phase 2 — Runtime walkthrough expansion
+Phase 3 — Design partner evaluation
+Phase 4 — Curated technical diligence
 ```
 
-More demo material will be added as the public showcase is prepared.
+---
+
+## Contact
+
+For strategic, enterprise, research, or technical review requests regarding governed execution systems and execution authority infrastructure, contact the DETERMA team.
+
+---
+
+## License
+
+Copyright © DETERMA.
+
+Public showcase materials are provided for evaluation and research discussion purposes only.
