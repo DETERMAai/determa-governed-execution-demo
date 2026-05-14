@@ -23,13 +23,11 @@ Unsafe replay attempts fail closed.
 
 ---
 
-## Run the Governed Execution Demonstration
+## Demonstration Status
 
-| Demo Mode | Command |
-|---|---|
-| One-command demo | `python scripts/demo_governed_flow.py` |
-| Interactive dashboard | `uvicorn runtime.api_shell:app --host 0.0.0.0 --port 8000` |
-| Docker runtime | `docker compose -f docker-compose.runtime.yml up` |
+This public repository currently presents the governed execution concept, split demonstration model, and public architecture overview.
+
+Executable runtime files are not included in this public showcase repository yet. Runtime demonstrations are available through curated walkthroughs and private technical review.
 
 ---
 
