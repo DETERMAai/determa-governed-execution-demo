@@ -18,6 +18,16 @@ Unsafe replay attempts fail closed.
 
 ---
 
+## Run the Governed Execution Demonstration
+
+| Demo Mode | Command |
+|---|---|
+| One-command demo | `python scripts/demo_governed_flow.py` |
+| Interactive dashboard | `uvicorn runtime.api_shell:app --host 0.0.0.0 --port 8000` |
+| Docker runtime | `docker compose -f docker-compose.runtime.yml up` |
+
+---
+
 ## What This Repository Is
 
 This repository is the public DETERMA showcase.
