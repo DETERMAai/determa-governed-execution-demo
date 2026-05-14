@@ -33,6 +33,44 @@ Unsafe replay attempts fail closed.
 
 ---
 
+## Execution Without Governance vs With DETERMA
+
+Split demonstration mode contrasts fail-open execution with fail-closed governed execution.
+
+### Without Governance
+
+```text
+AI generates action
+        ↓
+Direct execution
+        ↓
+System mutation occurs
+        ↓
+Replay or reuse may succeed
+        ↓
+No constrained authority boundary
+```
+
+### With DETERMA
+
+```text
+AI generates proposal
+        ↓
+Execution boundary intercepts request
+        ↓
+Authority validation occurs
+        ↓
+Replay validation occurs
+        ↓
+Constrained execution is granted only if valid
+        ↓
+Mutation is allowed only through governed execution
+        ↓
+Append only lineage is recorded
+```
+
+---
+
 ## Public Architecture Flow
 
 ```text
@@ -87,6 +125,7 @@ The public showcase currently demonstrates:
 - governed code mutation
 - constrained execution
 - replay blocking behavior
+- without governance vs governed execution contrast
 - append only lineage concepts
 - runtime verification
 - fail closed execution behavior
@@ -98,6 +137,7 @@ The public showcase currently demonstrates:
 | Document | Purpose |
 |---|---|
 | `docs/DEMO_OVERVIEW.md` | Public demo walkthrough |
+| `docs/SPLIT_DEMONSTRATION.md` | Without governance vs with DETERMA demo contrast |
 | `docs/PUBLIC_ARCHITECTURE.md` | High level architecture overview |
 | `docs/PRESENTATION.md` | Public presentation layer |
 | `docs/GETTING_STARTED.md` | Quick onboarding |
