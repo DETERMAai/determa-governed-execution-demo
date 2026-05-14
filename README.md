@@ -172,6 +172,12 @@ Phase 4 — Curated technical diligence
 
 For strategic, enterprise, research, or technical review requests regarding governed execution systems and execution authority infrastructure, contact the DETERMA team.
 
+To request the full presentation or express interest in participating as a Design Partner, email:
+
+```text
+determa.ai@gmail.com
+```
+
 ---
 
 ## License
