@@ -1,80 +1,71 @@
-# Threat Model (Public Demo Scope)
+# Threat Model (Operational Demo View)
 
-This demo covers seven threats.
+This demo is execution-focused.
+Each threat is evaluated at mutation time, not only at approval time.
 
-## 1) Replay Attack
+## Runtime Checks In Scope
 
-Threat:
-Reuse the same approved release multiple times.
+```text
+1) replay check
+2) repository witness check
+3) scope/path check
+4) deny-before-mutation
+5) append-only receipt
+```
 
-What can go wrong:
-Repeated mutations from a single approval.
+## Operational Threat Table
 
-How DETERMA blocks or detects it:
-Single-use release identity is checked at execution time; reused identity is denied and receipted.
+| Threat | What can go wrong at execution time | Runtime check | Observable demo signal |
+|---|---|---|---|
+| Replay attack | Same approved release is executed again | `release_id` single-use check | `decision=DENY` and `reason=replay` |
+| Repository drift | State changed after approval | Approved witness hash vs current hash | `reason=repository_drift` and `mutation_blocked=yes` |
+| Dirty workspace | Uncommitted/local change invalidates approved basis | Current witness differs from approved witness | Same deny path as drift |
+| Scope escalation | Requested mutation extends beyond approved target | Scope match check before write | `decision=DENY` before mutation |
+| Path traversal | Escaped path writes outside target boundary | Path normalization and strict target match | `decision=DENY` before mutation |
+| Receipt tampering | Denials or outcomes are hidden/rewritten | Append-only receipt logging | Receipt continuity mismatch is detectable |
+| Duplicate execution | Same mutation runs twice (retry/race) | Replay/identity check on second attempt | First ALLOW, second DENY |
 
-## 2) Stale Approval
+## Concrete Execution Outcomes
 
-Threat:
-Execute using old approval after relevant conditions changed.
+### Valid execution
 
-What can go wrong:
-Mutation occurs under outdated authority context.
+```text
+decision=ALLOW
+reason=witness_match
+mutation_executed=yes
+```
 
-How DETERMA blocks or detects it:
-Legitimacy is recomputed immediately before mutation; stale approvals fail current checks.
+### Drift denial
 
-## 3) Repository Drift
+```text
+decision=DENY
+reason=repository_drift
+mutation_blocked=yes
+```
 
-Threat:
-Repository state changes after approval but before execution.
+### Replay denial
 
-What can go wrong:
-A mutation is applied to unexpected content.
+```text
+decision=DENY
+reason=replay
+mutation_blocked=yes
+```
 
-How DETERMA blocks or detects it:
-Current repository state is compared to the approved basis; mismatch is denied and receipted.
+## Why This Is Execution-Centric
 
-## 4) Scope Escalation
+Traditional controls can approve or observe.
+This runtime also decides legitimacy immediately before write.
+If legitimacy fails now, mutation does not happen.
 
-Threat:
-Execution tries to mutate outside approved scope.
+## How To Reproduce
 
-What can go wrong:
-Unauthorized files or actions are changed.
+```bash
+./scripts/run_demo.sh
+```
 
-How DETERMA blocks or detects it:
-Requested mutation path and operation must stay inside the approved scope; out-of-scope attempts are denied.
+Then confirm:
 
-## 5) Path Traversal
-
-Threat:
-Use path tricks to escape allowed directories.
-
-What can go wrong:
-Writes happen outside intended target boundaries.
-
-How DETERMA blocks or detects it:
-Paths are normalized and checked against allowed targets; traversal escapes are denied.
-
-## 6) Receipt Tampering
-
-Threat:
-Modify history to hide denials or rewrite outcomes.
-
-What can go wrong:
-Audit trail becomes untrustworthy.
-
-How DETERMA blocks or detects it:
-Receipts are append-only in this demo flow; tampering attempts break continuity and are detectable.
-
-## 7) Duplicate Execution
-
-Threat:
-The same mutation is executed twice due to retries or race conditions.
-
-What can go wrong:
-Unintended repeated state changes.
-
-How DETERMA blocks or detects it:
-Execution identity and replay checks ensure duplicate attempts are denied and recorded.
+- ALLOW appears for `scenario=valid`
+- DENY appears for `scenario=drift` and `scenario=replay-second`
+- receipts count increments per attempt
+- denied scenarios show `mutation_blocked=yes`
