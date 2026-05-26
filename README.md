@@ -1,185 +1,83 @@
 # DETERMA Governed Execution Demo
 
-![Status](https://img.shields.io/badge/status-public_showcase-blue)
-![Demo](https://img.shields.io/badge/demo-governed_execution-success)
-![Runtime](https://img.shields.io/badge/runtime-fail_closed-critical)
-![Scope](https://img.shields.io/badge/scope-public_proof-lightgrey)
+This repository is a small public proof of governed execution.
 
-Public showcase for governed AI execution.
+The key timing problem:
 
-DETERMA demonstrates how AI generated actions can be governed before they are allowed to mutate real systems.
+1. Approval happened earlier.
+2. Execution happens now.
+3. Reality may have changed.
+4. DETERMA recomputes legitimacy immediately before mutation.
 
----
+## What This Demo Proves
 
-## Core Principle
+- Prior approval is not enough by itself.
+- Execution must be re-validated at execution time.
+- Mutations are allowed only when legitimacy still holds now.
+- Every attempt gets a receipt, including denials.
 
-```text
-AI proposes.
-Authority governs.
-Execution is constrained.
-Lineage is recorded.
-Unsafe replay attempts fail closed.
-```
+## Why Approval Alone Is Not Enough
 
----
+Approval and execution are separated by time.
+Between those times, state can change:
 
-## Demonstration Status
+- repository content can drift
+- an old approval can be replayed
+- scope can be changed
+- the same release can be sent twice
 
-This public repository currently presents the governed execution concept, split demonstration model, and public architecture overview.
+If you execute from approval alone, you can mutate the wrong state.
 
-Executable runtime files are not included in this public showcase repository yet. Runtime demonstrations are available through curated walkthroughs and private technical review.
-
----
-
-## Execution Without Governance vs With DETERMA
-
-Split demonstration mode contrasts fail-open execution with fail-closed governed execution.
-
-### Without Governance
+## Governed Execution Flow
 
 ```text
-AI generates action
-        ↓
-Direct execution
-        ↓
-System mutation occurs
-        ↓
-Replay or reuse may succeed
-        ↓
-No constrained authority boundary
+proposal
+  -> release
+  -> legitimacy recomputation at execution time
+  -> ALLOW or DENY
+  -> mutation executed or blocked
+  -> receipt appended
 ```
 
-### With DETERMA
+## Without DETERMA vs With DETERMA
+
+Without DETERMA:
 
 ```text
-AI generates proposal
-        ↓
-Execution boundary intercepts request
-        ↓
-Authority validation occurs
-        ↓
-Replay validation occurs
-        ↓
-Constrained execution is granted only if valid
-        ↓
-Mutation is allowed only through governed execution
-        ↓
-Append only lineage is recorded
+old approval exists
+  -> execute directly
+  -> mutation happens even if reality changed
 ```
 
----
-
-## Public Architecture Flow
+With DETERMA:
 
 ```text
-AI generated proposal
-        ↓
-Execution boundary
-        ↓
-Authority check
-        ↓
-Bounded execution grant
-        ↓
-Constrained execution
-        ↓
-Verification
-        ↓
-Lineage record
+old approval exists
+  -> recompute legitimacy now
+  -> only mutate if still valid
 ```
 
----
+## Exact Demo Commands
 
-## Why Governed Execution
-
-Most AI systems today focus on:
-
-- generation
-- orchestration
-- observability
-- copilots
-- prompt controls
-
-DETERMA focuses on a different question:
-
-```text
-Should this specific machine generated action be allowed to execute now?
+```bash
+git clone https://github.com/DETERMAai/determa-governed-execution-demo.git
+cd determa-governed-execution-demo
+./scripts/run_demo.sh
 ```
 
-That question becomes critical when AI systems begin modifying:
+Expected result:
 
-- code
-- infrastructure
-- workflows
-- operational systems
-- permissions
-- runtime state
+- `valid` => `ALLOW`
+- `drift` => `DENY (repository_drift)` and mutation blocked
+- `replay` => first `ALLOW`, second `DENY (replay)` and mutation blocked
+- receipts appended in `runtime/state/receipts.jsonl`
 
----
+## Out Of Scope (Intentional)
 
-## Public Demo Focus
+- cloud deployment
+- SaaS product scope
+- Kubernetes or orchestration layers
+- private/internal architecture and protocols
+- policy authoring UX and integrations
 
-The public showcase currently demonstrates:
-
-- governed code mutation
-- constrained execution
-- replay blocking behavior
-- without governance vs governed execution contrast
-- append only lineage concepts
-- runtime verification
-- fail closed execution behavior
-
----
-
-## Documentation
-
-| Document | Purpose |
-|---|---|
-| `docs/DEMO_OVERVIEW.md` | Public demo walkthrough |
-| `docs/SPLIT_DEMONSTRATION.md` | Without governance vs with DETERMA demo contrast |
-| `docs/PUBLIC_ARCHITECTURE.md` | High level architecture overview |
-| `docs/PRESENTATION.md` | Public presentation layer |
-| `docs/GETTING_STARTED.md` | Quick onboarding |
-| `docs/FAQ.md` | Common questions |
-| `docs/SECURITY_MODEL.md` | Public security model |
-| `docs/PUBLIC_SCOPE.md` | Public vs private scope |
-
----
-
-## Repository Scope
-
-Public equals proof.
-
-Private equals full authority system.
-
-This repository intentionally contains only the public governed execution showcase layer.
-
----
-
-## Public Roadmap
-
-```text
-Phase 1 — Public governed execution showcase
-Phase 2 — Runtime walkthrough expansion
-Phase 3 — Design partner evaluation
-Phase 4 — Curated technical diligence
-```
-
----
-
-## Contact
-
-For strategic, enterprise, research, or technical review requests regarding governed execution systems and execution authority infrastructure, contact the DETERMA team.
-
-To request the full presentation or express interest in participating as a Design Partner, email:
-
-```text
-determa.ai@gmail.com
-```
-
----
-
-## License
-
-Copyright © DETERMA.
-
-Public showcase materials are provided for evaluation and research discussion purposes only.
+See [docs/EXECUTION_GAP.md](docs/EXECUTION_GAP.md), [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and [docs/DEMO_OUTPUT.md](docs/DEMO_OUTPUT.md).
