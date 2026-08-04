@@ -31,21 +31,31 @@ state changed in between
 flowchart TB
     A[Proposal and intended mutation]
     B[Scoped release and approved witness]
+    G{Has this release already been consumed?}
+    H[DENY: replay]
+    S{Is the requested path and action in scope?}
+    T[DENY: scope violation]
     C[Current repository witness is recomputed]
     D{Does current state still match the approved basis?}
     E[ALLOW]
     F[DENY: repository drift]
-    G{Has this release already been consumed?}
-    H[DENY: replay]
     I[Execute the bounded local mutation]
     J[Do not mutate]
     K[Append a chained receipt]
 
-    A --> B --> C --> D
-    D -->|yes| G
-    D -->|no| F --> J --> K
-    G -->|no| E --> I --> K
-    G -->|yes| H --> J
+    A --> B --> G
+    G -->|yes| H
+    G -->|no| S
+    S -->|no| T
+    S -->|yes| C --> D
+    D -->|yes| E --> I --> K
+    D -->|no| F
+    H --> J
+    H --> K
+    T --> J
+    T --> K
+    F --> J
+    F --> K
 
     classDef input fill:#e8f1ff,stroke:#1f5fae,color:#102a43,stroke-width:2px;
     classDef gate fill:#eef7ff,stroke:#0f4c81,color:#102a43,stroke-width:2px;
@@ -53,18 +63,22 @@ flowchart TB
     classDef deny fill:#fff1f0,stroke:#b42318,color:#5c1712,stroke-width:2px;
     classDef evidence fill:#f7fafc,stroke:#5b6573,color:#102a43;
     class A,B,C input;
-    class D,G gate;
+    class D,G,S gate;
     class E,I allow;
-    class F,H,J deny;
+    class F,H,T,J deny;
     class K evidence;
 ```
 
-### Demonstrated paths
+### Demonstrated decision precedence
 
-- **Valid execution:** the current witness matches the approved witness and the release has not been consumed.
-- **Drift denial:** repository state differs from the approved basis before write.
-- **Replay denial:** a second attempt reuses an already consumed release.
-- **Evidence:** every path appends a receipt to the local receipt history.
+1. **Replay is checked first:** an already consumed release returns `DENY` with `reason=replay`.
+2. **Scope is checked next:** an unused release whose requested path or action is outside the approved scope returns `DENY` with `reason=scope_violation`.
+3. **Current state is checked for valid-scope releases:** the witness is recomputed only after replay and scope checks pass.
+4. **Valid execution:** the current witness matches the approved witness and the release has not been consumed.
+5. **Drift denial:** repository state differs from the approved basis before write.
+6. **Evidence:** every demonstrated decision path appends a receipt to the local receipt history.
+
+This ordering matches the observable runtime behavior of the demo. A replay attempt may also be stale, but the canonical reason reported by this implementation is `replay` because release consumption is evaluated first.
 
 ## Core Claim
 
@@ -108,10 +122,10 @@ mutation_blocked=yes
 
 | Threat | Traditional failure mode | Demo behavior |
 |---|---|---|
-| Replay | Reuse one approved release more than once | Second use is denied |
+| Replay | Reuse one approved release more than once | Second use is denied before scope or witness recomputation |
+| Scope escalation | Mutation targets an unapproved path or action | Scope validation denies before witness recomputation |
 | Repository drift | Approved state differs from execution state | Witness mismatch is denied before write |
 | Dirty workspace | Local change invalidates the approved basis | Current witness differs and mutation is blocked |
-| Scope escalation | Mutation targets an unapproved path or action | Scope validation denies the request |
 | Path traversal | Path manipulation escapes the intended target | Normalized target must remain in approved scope |
 | Receipt tampering | History is rewritten to hide outcomes | Chained receipts expose continuity breaks |
 | Duplicate execution | Retry or race repeats the same mutation | Release-consumption check denies the duplicate |
