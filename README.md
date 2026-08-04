@@ -1,17 +1,13 @@
 # DETERMA Governed Execution Demo
 
-![Scope](https://img.shields.io/badge/scope-governed_execution_only-blue)
-![Runtime](https://img.shields.io/badge/runtime-minimal-success)
-![Model](https://img.shields.io/badge/model-deny_before_mutation-critical)
-![Proof](https://img.shields.io/badge/proof-execution_time_legitimacy-informational)
+![Status](https://img.shields.io/badge/status-public_minimal_demo-1f5fae)
+![Runtime](https://img.shields.io/badge/runtime-local_proof-12324a)
+![Decision](https://img.shields.io/badge/decision-allow_or_deny-5b6573)
+![Production](https://img.shields.io/badge/production_claim-none-7a3e00)
 
-Small public proof of governed execution legitimacy.
+**A small public proof that recomputes execution legitimacy immediately before mutation.**
 
-## Why This Matters Now
-
-AI-generated changes are moving from suggestion to mutation.
-The risk is not only bad intent generation.
-The risk is stale execution authority:
+AI-generated changes are moving from suggestion to mutation. The risk is not only incorrect intent generation. Authority can become stale between approval and execution.
 
 ```text
 approval happened earlier
@@ -19,37 +15,73 @@ execution happens now
 state changed in between
 ```
 
-If legitimacy is not recomputed at mutation time, stale approvals can still mutate real state.
+## Repository Boundary
+
+| Dimension | Classification |
+|---|---|
+| Repository role | Public minimal governed-execution demo |
+| Environment | Local controlled proof |
+| Authority effect | Local demo decision only |
+| External mutation | Out of scope |
+| Production readiness claim | None |
+
+## Governed Execution Architecture
+
+```mermaid
+flowchart TB
+    A[Proposal and intended mutation]
+    B[Scoped release and approved witness]
+    C[Current repository witness is recomputed]
+    D{Does current state still match the approved basis?}
+    E[ALLOW]
+    F[DENY: repository drift]
+    G{Has this release already been consumed?}
+    H[DENY: replay]
+    I[Execute the bounded local mutation]
+    J[Do not mutate]
+    K[Append a chained receipt]
+
+    A --> B --> C --> D
+    D -->|yes| G
+    D -->|no| F --> J --> K
+    G -->|no| E --> I --> K
+    G -->|yes| H --> J
+
+    classDef input fill:#e8f1ff,stroke:#1f5fae,color:#102a43,stroke-width:2px;
+    classDef gate fill:#eef7ff,stroke:#0f4c81,color:#102a43,stroke-width:2px;
+    classDef allow fill:#edf8f1,stroke:#2d7a46,color:#173b25,stroke-width:2px;
+    classDef deny fill:#fff1f0,stroke:#b42318,color:#5c1712,stroke-width:2px;
+    classDef evidence fill:#f7fafc,stroke:#5b6573,color:#102a43;
+    class A,B,C input;
+    class D,G gate;
+    class E,I allow;
+    class F,H,J deny;
+    class K evidence;
+```
+
+### Demonstrated paths
+
+- **Valid execution:** the current witness matches the approved witness and the release has not been consumed.
+- **Drift denial:** repository state differs from the approved basis before write.
+- **Replay denial:** a second attempt reuses an already consumed release.
+- **Evidence:** every path appends a receipt to the local receipt history.
 
 ## Core Claim
-
-DETERMA does one thing in this demo:
 
 ```text
 recompute legitimacy immediately before mutation
 then ALLOW or DENY
 ```
 
-## Governed Execution Flow
-
-```text
-proposal
-  -> release
-  -> legitimacy recomputation (now)
-  -> ALLOW / DENY
-  -> mutation executed or blocked
-  -> append-only receipt
-```
-
-## ALLOW vs DENY (Terminal)
-
-Run:
+## Run the Demo
 
 ```bash
+git clone https://github.com/DETERMAai/determa-governed-execution-demo.git
+cd determa-governed-execution-demo
 ./scripts/run_demo.sh
 ```
 
-ALLOW example:
+Expected observations:
 
 ```text
 scenario=valid
@@ -58,16 +90,12 @@ reason=witness_match
 mutation_executed=yes
 ```
 
-DENY example (drift):
-
 ```text
 scenario=drift
 decision=DENY
 reason=repository_drift
 mutation_blocked=yes
 ```
-
-DENY example (replay):
 
 ```text
 scenario=replay-second
@@ -76,84 +104,39 @@ reason=replay
 mutation_blocked=yes
 ```
 
-Receipt append visibility:
+## Threat Demonstration
 
-```text
-receipts_total=1
-receipts_total=2
-receipts_total=3
-receipts_total=4
-```
-
-## Why Existing Approaches Are Insufficient
-
-These controls are useful, but they do not settle execution-time legitimacy by themselves.
-
-| Approach | What it helps with | What it misses at mutation time |
+| Threat | Traditional failure mode | Demo behavior |
 |---|---|---|
-| Approval systems | Human sign-off and policy intent | Approval can become stale before execution |
-| Audit logging | Historical trace after actions | Logging does not prevent stale execution before write |
-| Observability | Metrics, traces, and alerts | Detection is often after mutation, not a pre-write legitimacy gate |
-| CI/CD gates | Build/test checks before merge/deploy | Gate pass can be true earlier and false at execution time |
+| Replay | Reuse one approved release more than once | Second use is denied |
+| Repository drift | Approved state differs from execution state | Witness mismatch is denied before write |
+| Dirty workspace | Local change invalidates the approved basis | Current witness differs and mutation is blocked |
+| Scope escalation | Mutation targets an unapproved path or action | Scope validation denies the request |
+| Path traversal | Path manipulation escapes the intended target | Normalized target must remain in approved scope |
+| Receipt tampering | History is rewritten to hide outcomes | Chained receipts expose continuity breaks |
+| Duplicate execution | Retry or race repeats the same mutation | Release-consumption check denies the duplicate |
 
-## Threat Demonstration Table
+## Why Existing Controls Are Still Necessary
 
-| Threat | What goes wrong traditionally | What DETERMA does |
-|---|---|---|
-| Replay | Reuse approved release to mutate again | Single-use `release_id` check returns `DENY (replay)` |
-| Repository drift | Approved state no longer matches current state | Witness hash recomputation returns `DENY (repository_drift)` |
-| Dirty workspace | Local uncommitted change invalidates approved basis | Current witness differs from approved witness, mutation blocked |
-| Scope escalation | Execution attempts out-of-scope path/action | Scope check denies before write |
-| Path traversal | Path tricks escape intended target | Normalized path must match approved target or DENY |
-| Receipt tampering | History rewritten to hide denials | Append-only receipt chain exposes continuity breaks |
-| Duplicate execution | Retry/race executes same mutation twice | Replay/identity checks deny second execution |
+DETERMA does not replace approval systems, CI/CD gates, audit logging or observability. This demo isolates one additional property: whether the authority basis remains valid at the final mutation checkpoint.
 
-## Comparison: Without vs With DETERMA
+## Out of Scope
 
-Without DETERMA:
+- cloud or SaaS deployment;
+- networking services;
+- enterprise orchestration;
+- production credentials;
+- agent-framework integration;
+- customer data;
+- private runtime architecture.
 
-```text
-approval exists
-  -> execute directly
-  -> mutation can happen under stale reality
-```
+## Supporting Documents
 
-With DETERMA:
+- [Execution gap](docs/EXECUTION_GAP.md)
+- [Threat model](docs/THREAT_MODEL.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Demo output](docs/DEMO_OUTPUT.md)
 
-```text
-approval exists
-  -> recompute legitimacy now
-  -> mutate only if still legitimate now
-```
+## Truth Boundary
 
-## Exact Demo Commands
-
-```bash
-git clone https://github.com/DETERMAai/determa-governed-execution-demo.git
-cd determa-governed-execution-demo
-./scripts/run_demo.sh
-```
-
-What to look for:
-
-- one `ALLOW` valid execution
-- one `DENY (repository_drift)` with blocked mutation
-- one `DENY (replay)` with blocked duplicate mutation
-- append-only receipt growth in `runtime/state/receipts.jsonl`
-
-## Out Of Scope
-
-- cloud deployment
-- SaaS scope
-- networking services
-- orchestration systems
-- databases
-- agent frameworks
-- private/internal architecture
-
-## Minimal Scope Reminder
-
-This repository is intentionally small.
-It demonstrates execution-time legitimacy checks only.
-
-See [docs/EXECUTION_GAP.md](docs/EXECUTION_GAP.md), [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and [docs/DEMO_OUTPUT.md](docs/DEMO_OUTPUT.md).
+This repository demonstrates local, bounded behavior. It is not evidence of a production deployment, customer validation, enterprise-scale availability or complete mediation across external systems.
