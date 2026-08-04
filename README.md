@@ -44,12 +44,13 @@ flowchart TB
     K[Append a chained receipt]
 
     A --> B --> G
-    G -->|yes| H --> J --> K
+    G -->|yes| H --> J
     G -->|no| S
     S -->|no| T --> J
     S -->|yes| C --> D
     D -->|yes| E --> I --> K
     D -->|no| F --> J
+    J --> K
 
     classDef input fill:#e8f1ff,stroke:#1f5fae,color:#102a43,stroke-width:2px;
     classDef gate fill:#eef7ff,stroke:#0f4c81,color:#102a43,stroke-width:2px;
