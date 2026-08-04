@@ -31,21 +31,21 @@ state changed in between
 flowchart TB
     A[Proposal and intended mutation]
     B[Scoped release and approved witness]
+    G{Has this release already been consumed?}
+    H[DENY: replay]
     C[Current repository witness is recomputed]
     D{Does current state still match the approved basis?}
     E[ALLOW]
     F[DENY: repository drift]
-    G{Has this release already been consumed?}
-    H[DENY: replay]
     I[Execute the bounded local mutation]
     J[Do not mutate]
     K[Append a chained receipt]
 
-    A --> B --> C --> D
-    D -->|yes| G
-    D -->|no| F --> J --> K
-    G -->|no| E --> I --> K
-    G -->|yes| H --> J
+    A --> B --> G
+    G -->|yes| H --> J --> K
+    G -->|no| C --> D
+    D -->|yes| E --> I --> K
+    D -->|no| F --> J
 
     classDef input fill:#e8f1ff,stroke:#1f5fae,color:#102a43,stroke-width:2px;
     classDef gate fill:#eef7ff,stroke:#0f4c81,color:#102a43,stroke-width:2px;
@@ -59,12 +59,15 @@ flowchart TB
     class K evidence;
 ```
 
-### Demonstrated paths
+### Demonstrated decision precedence
 
-- **Valid execution:** the current witness matches the approved witness and the release has not been consumed.
-- **Drift denial:** repository state differs from the approved basis before write.
-- **Replay denial:** a second attempt reuses an already consumed release.
-- **Evidence:** every path appends a receipt to the local receipt history.
+1. **Replay is checked first:** an already consumed release returns `DENY` with `reason=replay`.
+2. **Current state is checked next:** an unused release proceeds to witness recomputation.
+3. **Valid execution:** the current witness matches the approved witness and the release has not been consumed.
+4. **Drift denial:** repository state differs from the approved basis before write.
+5. **Evidence:** every demonstrated path appends a receipt to the local receipt history.
+
+This ordering matches the observable runtime behavior of the demo. A replay attempt may also be stale, but the canonical reason reported by this implementation is `replay` because release consumption is evaluated first.
 
 ## Core Claim
 
@@ -108,7 +111,7 @@ mutation_blocked=yes
 
 | Threat | Traditional failure mode | Demo behavior |
 |---|---|---|
-| Replay | Reuse one approved release more than once | Second use is denied |
+| Replay | Reuse one approved release more than once | Second use is denied before witness recomputation |
 | Repository drift | Approved state differs from execution state | Witness mismatch is denied before write |
 | Dirty workspace | Local change invalidates the approved basis | Current witness differs and mutation is blocked |
 | Scope escalation | Mutation targets an unapproved path or action | Scope validation denies the request |
