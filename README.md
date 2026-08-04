@@ -33,6 +33,8 @@ flowchart TB
     B[Scoped release and approved witness]
     G{Has this release already been consumed?}
     H[DENY: replay]
+    S{Is the requested path and action in scope?}
+    T[DENY: scope violation]
     C[Current repository witness is recomputed]
     D{Does current state still match the approved basis?}
     E[ALLOW]
@@ -43,7 +45,9 @@ flowchart TB
 
     A --> B --> G
     G -->|yes| H --> J --> K
-    G -->|no| C --> D
+    G -->|no| S
+    S -->|no| T --> J
+    S -->|yes| C --> D
     D -->|yes| E --> I --> K
     D -->|no| F --> J
 
@@ -53,19 +57,20 @@ flowchart TB
     classDef deny fill:#fff1f0,stroke:#b42318,color:#5c1712,stroke-width:2px;
     classDef evidence fill:#f7fafc,stroke:#5b6573,color:#102a43;
     class A,B,C input;
-    class D,G gate;
+    class D,G,S gate;
     class E,I allow;
-    class F,H,J deny;
+    class F,H,T,J deny;
     class K evidence;
 ```
 
 ### Demonstrated decision precedence
 
 1. **Replay is checked first:** an already consumed release returns `DENY` with `reason=replay`.
-2. **Current state is checked next:** an unused release proceeds to witness recomputation.
-3. **Valid execution:** the current witness matches the approved witness and the release has not been consumed.
-4. **Drift denial:** repository state differs from the approved basis before write.
-5. **Evidence:** every demonstrated path appends a receipt to the local receipt history.
+2. **Scope is checked next:** an unused release whose requested path or action is outside the approved scope returns `DENY` with `reason=scope_violation`.
+3. **Current state is checked for valid-scope releases:** the witness is recomputed only after replay and scope checks pass.
+4. **Valid execution:** the current witness matches the approved witness and the release has not been consumed.
+5. **Drift denial:** repository state differs from the approved basis before write.
+6. **Evidence:** every demonstrated decision path appends a receipt to the local receipt history.
 
 This ordering matches the observable runtime behavior of the demo. A replay attempt may also be stale, but the canonical reason reported by this implementation is `replay` because release consumption is evaluated first.
 
@@ -111,10 +116,10 @@ mutation_blocked=yes
 
 | Threat | Traditional failure mode | Demo behavior |
 |---|---|---|
-| Replay | Reuse one approved release more than once | Second use is denied before witness recomputation |
+| Replay | Reuse one approved release more than once | Second use is denied before scope or witness recomputation |
+| Scope escalation | Mutation targets an unapproved path or action | Scope validation denies before witness recomputation |
 | Repository drift | Approved state differs from execution state | Witness mismatch is denied before write |
 | Dirty workspace | Local change invalidates the approved basis | Current witness differs and mutation is blocked |
-| Scope escalation | Mutation targets an unapproved path or action | Scope validation denies the request |
 | Path traversal | Path manipulation escapes the intended target | Normalized target must remain in approved scope |
 | Receipt tampering | History is rewritten to hide outcomes | Chained receipts expose continuity breaks |
 | Duplicate execution | Retry or race repeats the same mutation | Release-consumption check denies the duplicate |
