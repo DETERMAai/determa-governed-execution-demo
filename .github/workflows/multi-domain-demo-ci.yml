@@ -1,0 +1,136 @@
+name: Multi-Domain Visual Demo CI
+
+on:
+  push:
+    branches:
+      - feat/multi-domain-visual-demo-v1
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "README.md"
+      - "docs/MULTI_DOMAIN_VISUAL_DEMO_V1.md"
+      - "web/**"
+      - ".github/workflows/multi-domain-demo-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EXPECTED_BASE_SHA: 5eaea0e78ad9dd932393c52cd0b35ea0a2ee53a3
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Detect bootstrap lock
+        id: lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -q '"x_determa_status": "PENDING_NETWORK_MATERIALIZATION"' web/package-lock.json; then
+            echo "materialize=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "materialize=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Materialize exact lockfile
+        if: steps.lock.outputs.materialize == 'true'
+        working-directory: web
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Install locked dependencies
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        working-directory: web
+        run: npm run typecheck
+
+      - name: Unit and UI tests
+        working-directory: web
+        run: npm run test
+
+      - name: Production build
+        working-directory: web
+        run: npm run build
+
+      - name: Existing shell-demo regression
+        run: ./scripts/run_demo.sh
+
+      - name: Verify exact changed paths and protected directories
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code "$EXPECTED_BASE_SHA"...HEAD -- runtime examples scripts
+          python - <<'PY'
+          import subprocess
+          expected = {
+              ".github/workflows/multi-domain-demo-ci.yml",
+              "README.md",
+              "docs/MULTI_DOMAIN_VISUAL_DEMO_V1.md",
+              "web/package.json",
+              "web/package-lock.json",
+              "web/tsconfig.json",
+              "web/tsconfig.node.json",
+              "web/vite.config.ts",
+              "web/index.html",
+              "web/src/vite-env.d.ts",
+              "web/src/main.tsx",
+              "web/src/App.tsx",
+              "web/src/styles.css",
+              "web/src/authority/types.ts",
+              "web/src/authority/canonicalize.ts",
+              "web/src/authority/universalRules.ts",
+              "web/src/authority/evaluator.ts",
+              "web/src/authority/receipt.ts",
+              "web/src/authority/replay.ts",
+              "web/src/authority/simulatedExecution.ts",
+              "web/src/domain-packs/types.ts",
+              "web/src/domain-packs/softwareDelivery.ts",
+              "web/src/domain-packs/crmOperations.ts",
+              "web/src/components/ScenarioSelector.tsx",
+              "web/src/components/ActionPanel.tsx",
+              "web/src/components/ApprovalPanel.tsx",
+              "web/src/components/RuntimeContextPanel.tsx",
+              "web/src/components/DecisionPanel.tsx",
+              "web/src/components/ComparisonTable.tsx",
+              "web/src/components/ReceiptPanel.tsx",
+              "web/src/components/AuditTimeline.tsx",
+              "web/src/components/MetricsStrip.tsx",
+              "web/src/test/evaluator.test.ts",
+              "web/src/test/determinism.test.ts",
+              "web/src/test/domainMutation.test.ts",
+              "web/src/test/replay.test.ts",
+              "web/src/test/simulatedExecution.test.ts",
+              "web/src/test/setup.ts",
+              "web/src/test/uiSmoke.test.tsx",
+          }
+          actual = set(subprocess.check_output([
+              "git", "diff", "--name-only", f"{__import__('os').environ['EXPECTED_BASE_SHA']}...HEAD"
+          ], text=True).splitlines())
+          if actual != expected:
+              print("Missing:", sorted(expected - actual))
+              print("Unexpected:", sorted(actual - expected))
+              raise SystemExit(1)
+          print(f"Exact changed-path set verified: {len(actual)} paths")
+          PY
+
+      - name: Upload materialized lockfile
+        if: steps.lock.outputs.materialize == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: multi-domain-demo-lockfile
+          path: web/package-lock.json
+          if-no-files-found: error
+          retention-days: 3

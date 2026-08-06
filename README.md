@@ -130,6 +130,26 @@ mutation_blocked=yes
 | Receipt tampering | History is rewritten to hide outcomes | Chained receipts expose continuity breaks |
 | Duplicate execution | Retry or race repeats the same mutation | Release-consumption check denies the duplicate |
 
+## Multi-Domain Visual Demo
+
+A separate local Web surface demonstrates the same execution-authority question across two synthetic domains using one deterministic evaluator:
+
+- `SOFTWARE_DELIVERY`
+- `CRM_OPERATIONS`
+
+The visual demo returns `ALLOW`, `NEEDS_REVIEW` or `DENY`, shows approved-versus-current comparison, emits deterministic Evidence Receipts, supports evaluation replay and provides a constrained in-memory `Enforced Simulation`. It makes no live GitHub, CRM, customer or production connection.
+
+```bash
+cd web
+npm ci
+npm run typecheck
+npm run test
+npm run build
+npm run dev
+```
+
+See [Multi-Domain Visual Demo v1](docs/MULTI_DOMAIN_VISUAL_DEMO_V1.md).
+
 ## Why Existing Controls Are Still Necessary
 
 DETERMA does not replace approval systems, CI/CD gates, audit logging or observability. This demo isolates one additional property: whether the authority basis remains valid at the final mutation checkpoint.
