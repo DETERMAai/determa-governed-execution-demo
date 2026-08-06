@@ -49,6 +49,24 @@ jobs:
         working-directory: web
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
+      - name: Remove bootstrap marker from materialized lockfile
+        if: steps.lock.outputs.materialize == 'true'
+        working-directory: web
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require("node:fs");
+          const path = "package-lock.json";
+          const lock = JSON.parse(fs.readFileSync(path, "utf8"));
+          delete lock.x_determa_status;
+          fs.writeFileSync(path, `${JSON.stringify(lock, null, 2)}\n`);
+          NODE
+          if grep -q 'PENDING_NETWORK_MATERIALIZATION' package-lock.json; then
+            echo "bootstrap marker remained after normalization" >&2
+            exit 1
+          fi
+
       - name: Install locked dependencies
         working-directory: web
         run: npm ci --no-audit --no-fund
