@@ -20,6 +20,9 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      materialize: ${{ steps.lock.outputs.materialize }}
+      lock_sha256: ${{ steps.lock_hash.outputs.sha256 }}
     env:
       EXPECTED_BASE_SHA: 5eaea0e78ad9dd932393c52cd0b35ea0a2ee53a3
     steps:
@@ -144,6 +147,14 @@ jobs:
           print(f"Exact changed-path set verified: {len(actual)} paths")
           PY
 
+      - name: Hash validated lockfile
+        id: lock_hash
+        working-directory: web
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "sha256=$(sha256sum package-lock.json | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
       - name: Upload materialized lockfile
         if: steps.lock.outputs.materialize == 'true'
         uses: actions/upload-artifact@v4
@@ -152,3 +163,46 @@ jobs:
           path: web/package-lock.json
           if-no-files-found: error
           retention-days: 3
+
+  bind_lock:
+    needs: validate
+    if: needs.validate.outputs.materialize == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/feat/multi-domain-visual-demo-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout exact validated commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Download exact validated lockfile
+        uses: actions/download-artifact@v4
+        with:
+          name: multi-domain-demo-lockfile
+          path: web
+
+      - name: Verify and bind exact lockfile
+        shell: bash
+        env:
+          EXPECTED_LOCK_SHA256: ${{ needs.validate.outputs.lock_sha256 }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "feat/multi-domain-visual-demo-v1"
+          actual_sha="$(sha256sum web/package-lock.json | awk '{print $1}')"
+          test "$actual_sha" = "$EXPECTED_LOCK_SHA256"
+          if grep -q 'PENDING_NETWORK_MATERIALIZATION' web/package-lock.json; then
+            echo "bootstrap marker remained in downloaded lockfile" >&2
+            exit 1
+          fi
+          changed="$(git diff --name-only)"
+          test "$changed" = "web/package-lock.json"
+          git config user.name "DETERMA.ai"
+          git config user.email "determa.ai@gmail.com"
+          git add -- web/package-lock.json
+          staged="$(git diff --cached --name-only)"
+          test "$staged" = "web/package-lock.json"
+          git commit -m "build: bind exact web dependency lock"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
