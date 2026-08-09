@@ -1,0 +1,457 @@
+name: DETERMA Repowise Hardened No-Egress Public Rehearsal V3
+
+on:
+  push:
+    branches:
+      - bench/repowise-hardened-no-egress-v3
+
+permissions:
+  contents: read
+
+jobs:
+  containment:
+    name: Repowise pinned no-egress exhaustive project-manifest rehearsal
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      REPOWISE_SHA: "a3b6714c5523dc7c45d6bce0522035339bcf3afd"
+      REPOWISE_VERSION: "0.39.0"
+      TARGET_SHA: "5eaea0e78ad9dd932393c52cd0b35ea0a2ee53a3"
+      TARGET_TREE: "7151663501fa62ac69c0a9a0815ac14daff9db59"
+      CHECKOUT_ACTION_SHA: "de0fac2e4500dabe0009e67214ff5f5447ce83dd"
+      PYTHON_BASE_IMAGE: "python@sha256:229a2c5bfa27522db7815ea81f9bed70af17ccb9de9fc7ad142b1877b5830d36"
+
+    steps:
+      - name: Build exact Repowise image before target checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="${RUNNER_TEMP}/determa-repowise-containment-v4"
+          mkdir -p "$ROOT/results"
+          echo "ROOT=$ROOT" >> "$GITHUB_ENV"
+
+          git clone --no-tags https://github.com/repowise-dev/repowise.git "$ROOT/repowise"
+          git -C "$ROOT/repowise" checkout --detach "$REPOWISE_SHA"
+          test "$(git -C "$ROOT/repowise" rev-parse HEAD)" = "$REPOWISE_SHA"
+
+          cat > "$ROOT/Dockerfile" <<'EOF'
+          FROM python@sha256:229a2c5bfa27522db7815ea81f9bed70af17ccb9de9fc7ad142b1877b5830d36
+          ENV PYTHONDONTWRITEBYTECODE=1 \
+              PYTHONUNBUFFERED=1 \
+              PIP_DISABLE_PIP_VERSION_CHECK=1
+          WORKDIR /opt/repowise
+          COPY repowise /opt/repowise
+          RUN apt-get update \
+              && apt-get install -y --no-install-recommends git time ca-certificates \
+              && rm -rf /var/lib/apt/lists/* \
+              && python -m pip install /opt/repowise
+          ENTRYPOINT []
+          EOF
+
+          docker pull "$PYTHON_BASE_IMAGE"
+          docker build --pull=false -t determa/repowise-pinned-v4 -f "$ROOT/Dockerfile" "$ROOT"
+          IMAGE_ID="$(docker image inspect determa/repowise-pinned-v4 --format '{{.Id}}')"
+          echo "REPOWISE_IMAGE_ID=$IMAGE_ID"
+          echo "REPOWISE_IMAGE_ID=$IMAGE_ID" >> "$GITHUB_ENV"
+
+          docker run --rm determa/repowise-pinned-v4 repowise --version | tee "$ROOT/repowise-version.txt"
+          grep -F "repowise, version ${REPOWISE_VERSION}" "$ROOT/repowise-version.txt"
+          docker run --rm determa/repowise-pinned-v4 python -m pip freeze | LC_ALL=C sort | tee "$ROOT/pip-freeze.txt"
+          echo "PIP_FREEZE_SHA256=$(sha256sum "$ROOT/pip-freeze.txt" | awk '{print $1}')"
+
+          cat > "$ROOT/manifest.py" <<'PY'
+          import hashlib
+          import json
+          import os
+          import stat
+          import sys
+          from pathlib import Path
+
+          root = Path(sys.argv[1]).resolve()
+          out = Path(sys.argv[2])
+          entries = []
+
+          def file_sha256(path: Path) -> str:
+              h = hashlib.sha256()
+              with path.open("rb") as f:
+                  for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                      h.update(chunk)
+              return h.hexdigest()
+
+          for current, dirnames, filenames in os.walk(root, topdown=True, followlinks=False):
+              current_path = Path(current)
+              if current_path == root:
+                  dirnames[:] = [d for d in dirnames if d != ".git"]
+              for name in sorted(dirnames + filenames):
+                  p = current_path / name
+                  rel = p.relative_to(root).as_posix()
+                  if rel == ".git" or rel.startswith(".git/"):
+                      continue
+                  st = p.lstat()
+                  mode = stat.S_IMODE(st.st_mode)
+                  if stat.S_ISLNK(st.st_mode):
+                      kind = "symlink"
+                      target = os.readlink(p)
+                      size = len(target.encode())
+                      digest = hashlib.sha256(target.encode()).hexdigest()
+                  elif stat.S_ISDIR(st.st_mode):
+                      kind = "dir"
+                      target = None
+                      size = 0
+                      digest = None
+                  elif stat.S_ISREG(st.st_mode):
+                      kind = "file"
+                      target = None
+                      size = st.st_size
+                      digest = file_sha256(p)
+                  else:
+                      kind = "other"
+                      target = None
+                      size = st.st_size
+                      digest = None
+                  entries.append({
+                      "path": rel,
+                      "kind": kind,
+                      "mode": f"{mode:04o}",
+                      "size": size,
+                      "sha256": digest,
+                      "target": target,
+                  })
+
+          payload = {"root_name": root.name, "entries": sorted(entries, key=lambda x: x["path"])}
+          out.write_text(json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n")
+          print(f"MANIFEST_PATH={out}")
+          print(f"MANIFEST_ENTRIES={len(entries)}")
+          print(f"MANIFEST_SHA256={file_sha256(out)}")
+          PY
+
+      - name: Checkout exact public target with full history and no persisted credential
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+          clean: true
+          path: source-original
+
+      - name: Bind original source and create independent disposable copy
+        shell: bash
+        run: |
+          set -euo pipefail
+          ORIGINAL="$GITHUB_WORKSPACE/source-original"
+          DISPOSABLE="$RUNNER_TEMP/determa-repowise-v4-disposable"
+          echo "ORIGINAL=$ORIGINAL" >> "$GITHUB_ENV"
+          echo "DISPOSABLE=$DISPOSABLE" >> "$GITHUB_ENV"
+
+          test "$(git -C "$ORIGINAL" rev-parse HEAD)" = "$TARGET_SHA"
+          test "$(git -C "$ORIGINAL" rev-parse 'HEAD^{tree}')" = "$TARGET_TREE"
+          test -z "$(git -C "$ORIGINAL" status --porcelain=v1)"
+          test ! -e "$ORIGINAL/.repowise"
+          test ! -e "$ORIGINAL/.mcp.json"
+          test ! -e "$ORIGINAL/.vscode"
+
+          if git -C "$ORIGINAL" config --local --get-regexp '^(http\..*extraheader|credential\.)' >"$ROOT/results/original-credential-config.txt" 2>/dev/null; then
+            cat "$ROOT/results/original-credential-config.txt"
+            echo "STOP_ON_PERSISTED_CHECKOUT_CREDENTIAL"
+            exit 92
+          fi
+          git -C "$ORIGINAL" config core.hooksPath /dev/null
+
+          python3 "$ROOT/manifest.py" "$ORIGINAL" "$ROOT/results/original-pre.json"
+
+          rm -rf "$DISPOSABLE"
+          git clone --no-local --no-checkout "$ORIGINAL" "$DISPOSABLE"
+          git -C "$DISPOSABLE" checkout --detach "$TARGET_SHA"
+          test "$(git -C "$DISPOSABLE" rev-parse HEAD)" = "$TARGET_SHA"
+          test "$(git -C "$DISPOSABLE" rev-parse 'HEAD^{tree}')" = "$TARGET_TREE"
+          test -z "$(git -C "$DISPOSABLE" status --porcelain=v1)"
+          test ! -f "$DISPOSABLE/.git/objects/info/alternates"
+          git -C "$DISPOSABLE" config core.hooksPath /dev/null
+
+          test ! -e "$DISPOSABLE/.repowise"
+          test ! -e "$DISPOSABLE/.mcp.json"
+          test ! -e "$DISPOSABLE/.vscode"
+          test ! -e "$DISPOSABLE/.claude"
+          test ! -e "$DISPOSABLE/.codex"
+          test ! -e "$DISPOSABLE/AGENTS.md"
+
+          python3 "$ROOT/manifest.py" "$DISPOSABLE" "$ROOT/results/disposable-pre.json"
+          cmp "$ROOT/results/original-pre.json" "$ROOT/results/disposable-pre.json" || {
+            echo "STOP_ON_DISPOSABLE_BASELINE_MISMATCH"
+            exit 93
+          }
+          echo "DISPOSABLE_BASELINE=PASS"
+
+      - name: Prove no egress and run Repowise only against disposable copy
+        shell: bash
+        run: |
+          set -euo pipefail
+          START_EPOCH="$(date +%s%N)"
+          docker run --rm \
+            --network none \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            --pids-limit 256 \
+            --memory 4g \
+            --cpus 2 \
+            --tmpfs /tmp:rw,nosuid,nodev,size=512m \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp/home \
+            -e XDG_CONFIG_HOME=/tmp/xdg-config \
+            -e XDG_CACHE_HOME=/tmp/xdg-cache \
+            -e TMPDIR=/tmp \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            -e REPOWISE_TELEMETRY_DISABLED=1 \
+            -e DO_NOT_TRACK=1 \
+            -e REPOWISE_SKIP_EDITOR_SETUP=1 \
+            -e TARGET_SHA="$TARGET_SHA" \
+            -e TARGET_TREE="$TARGET_TREE" \
+            -v "$DISPOSABLE:/workspace:rw" \
+            determa/repowise-pinned-v4 \
+            bash -lc '
+              set -euo pipefail
+              mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
+
+              python - <<"PY"
+          import socket
+          checks = [("1.1.1.1", 443), ("github.com", 443)]
+          for host, port in checks:
+              try:
+                  with socket.create_connection((host, port), timeout=1):
+                      raise SystemExit(f"STOP_ON_NETWORK_EGRESS_AVAILABLE:{host}:{port}")
+              except OSError:
+                  pass
+          print("NETWORK_EGRESS=BLOCKED")
+          PY
+
+              for k in OPENAI_API_KEY ANTHROPIC_API_KEY GEMINI_API_KEY GOOGLE_API_KEY OPENROUTER_API_KEY DEEPSEEK_API_KEY KIMI_API_KEY GITHUB_TOKEN GH_TOKEN REPOWISE_DB_URL REPOWISE_DATABASE_URL; do
+                if [[ -n "${!k:-}" ]]; then
+                  echo "STOP_ON_CREDENTIAL_OR_EXTERNAL_DB_IN_CONTAINER:${k}"
+                  exit 91
+                fi
+              done
+
+              test "$(git -C /workspace rev-parse HEAD)" = "${TARGET_SHA}"
+              test "$(git -C /workspace rev-parse HEAD^{tree})" = "${TARGET_TREE}"
+              test -z "$(git -C /workspace status --porcelain=v1)"
+
+              repowise --version
+              repowise init /workspace \
+                --no-prose \
+                --embedder mock \
+                --no-editor-setup \
+                --no-codex \
+                --no-agents \
+                --no-distill-hook \
+                --no-claude-md \
+                --no-workspace \
+                --yes
+
+              test -f /workspace/.repowise/wiki.db
+              test -f /workspace/.repowise/state.json
+              test -f /workspace/.repowise/config.yaml
+              test -f /workspace/.repowise/mcp.json
+              test -f /workspace/.mcp.json
+              test -f /workspace/.vscode/mcp.json
+              test -f /workspace/.vscode/extensions.json
+              test ! -e /workspace/.claude
+              test ! -e /workspace/.codex
+              test ! -e /workspace/AGENTS.md
+
+              python - <<"PY"
+          import json
+          from pathlib import Path
+
+          root = Path("/workspace")
+          state = json.loads((root / ".repowise/state.json").read_text())
+          if state.get("provider") not in (None, ""):
+              raise SystemExit(f"STOP_ON_PROVIDER_RESOLVED:{state.get('provider')}")
+          if state.get("model") not in (None, ""):
+              raise SystemExit(f"STOP_ON_MODEL_RESOLVED:{state.get('model')}")
+          if state.get("total_tokens", 0) not in (0, None):
+              raise SystemExit(f"STOP_ON_NONZERO_MODEL_TOKENS:{state.get('total_tokens')}")
+
+          expected_desc = "repowise: codebase intelligence — docs, graph, git signals, dead code, decisions"
+          expected_standard = {
+              "mcpServers": {
+                  "repowise": {
+                      "command": "repowise",
+                      "args": ["mcp", "/workspace", "--transport", "stdio"],
+                      "description": expected_desc,
+                  }
+              }
+          }
+          root_mcp = json.loads((root / ".mcp.json").read_text())
+          local_mcp = json.loads((root / ".repowise/mcp.json").read_text())
+          if root_mcp != expected_standard:
+              raise SystemExit(f"STOP_ON_ROOT_MCP_CONTENT_DRIFT:{root_mcp!r}")
+          if local_mcp != expected_standard:
+              raise SystemExit(f"STOP_ON_LOCAL_MCP_CONTENT_DRIFT:{local_mcp!r}")
+
+          vscode_mcp = json.loads((root / ".vscode/mcp.json").read_text())
+          expected_vscode = {
+              "servers": {
+                  "repowise": {
+                      "type": "stdio",
+                      **expected_standard["mcpServers"]["repowise"],
+                  }
+              }
+          }
+          if vscode_mcp != expected_vscode:
+              raise SystemExit(f"STOP_ON_VSCODE_MCP_CONTENT_DRIFT:{vscode_mcp!r}")
+
+          extensions = json.loads((root / ".vscode/extensions.json").read_text())
+          if extensions != {"recommendations": ["repowise-dev.repowise"]}:
+              raise SystemExit(f"STOP_ON_VSCODE_EXTENSIONS_CONTENT_DRIFT:{extensions!r}")
+
+          print("PROVIDER_RESOLVED=NONE")
+          print("MODEL_RESOLVED=NONE")
+          print("MODEL_TOKENS=0")
+          print("ROOT_MCP_CONTENT=EXPECTED")
+          print("VSCODE_PROJECT_FILES=EXPECTED")
+          PY
+
+              repowise status /workspace --no-workspace
+              /usr/bin/time -f "METRIC_SEARCH_APPROVAL_ELAPSED_SECONDS=%e" \
+                repowise search "approval" /workspace --mode fulltext --limit 10 --no-workspace
+              /usr/bin/time -f "METRIC_SEARCH_STATE_ELAPSED_SECONDS=%e" \
+                repowise search "state" /workspace --mode fulltext --limit 10 --no-workspace
+              /usr/bin/time -f "METRIC_SEARCH_EXECUTE_ELAPSED_SECONDS=%e" \
+                repowise search "execute" /workspace --mode fulltext --limit 10 --no-workspace
+
+              test "$(git -C /workspace rev-parse HEAD)" = "${TARGET_SHA}"
+              test "$(git -C /workspace rev-parse HEAD^{tree})" = "${TARGET_TREE}"
+              test -z "$(git -C /workspace status --porcelain=v1 --untracked-files=no)"
+              echo "TRACKED_SOURCE_DIFF=NONE"
+            '
+          END_EPOCH="$(date +%s%N)"
+          python3 - <<PY
+          start = int("$START_EPOCH")
+          end = int("$END_EPOCH")
+          print(f"METRIC_CONTAINER_TREATMENT_ELAPSED_SECONDS={(end-start)/1_000_000_000:.3f}")
+          PY
+
+      - name: Enforce exhaustive disposable project-local write manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 "$ROOT/manifest.py" "$DISPOSABLE" "$ROOT/results/disposable-post.json"
+          python3 "$ROOT/manifest.py" "$ORIGINAL" "$ROOT/results/original-post.json"
+
+          cmp "$ROOT/results/original-pre.json" "$ROOT/results/original-post.json" || {
+            echo "STOP_ON_ORIGINAL_SOURCE_PROJECT_FILE_CHANGE"
+            exit 94
+          }
+
+          python3 - "$ROOT/results/disposable-pre.json" "$ROOT/results/disposable-post.json" <<'PY'
+          import json
+          import sys
+
+          pre = {e["path"]: e for e in json.load(open(sys.argv[1]))["entries"]}
+          post = {e["path"]: e for e in json.load(open(sys.argv[2]))["entries"]}
+
+          paths = sorted(set(pre) | set(post))
+          delta = []
+          for path in paths:
+              before = pre.get(path)
+              after = post.get(path)
+              if before == after:
+                  continue
+              if before is None:
+                  kind = "NEW"
+              elif after is None:
+                  kind = "REMOVED"
+              else:
+                  kind = "CHANGED"
+              delta.append({"path": path, "delta": kind, "before": before, "after": after})
+
+          def allowed(path: str) -> bool:
+              return (
+                  path == ".repowise"
+                  or path.startswith(".repowise/")
+                  or path == ".mcp.json"
+                  or path == ".vscode"
+                  or path == ".vscode/mcp.json"
+                  or path == ".vscode/extensions.json"
+              )
+
+          violations = []
+          for item in delta:
+              path = item["path"]
+              if not allowed(path):
+                  violations.append({"reason": "UNDECLARED_PATH_DELTA", **item})
+                  continue
+              if item["delta"] != "NEW":
+                  violations.append({"reason": "PREEXISTING_ALLOWED_PATH_CHANGED_OR_REMOVED", **item})
+                  continue
+              after = item["after"] or {}
+              if after.get("kind") in {"symlink", "other"}:
+                  violations.append({"reason": "UNSAFE_OUTPUT_KIND", **item})
+
+          print("PROJECT_LOCAL_DELTA_COUNT=" + str(len(delta)))
+          for item in delta:
+              print(f"PROJECT_LOCAL_DELTA={item['delta']}:{item['path']}")
+
+          if violations:
+              print(json.dumps({"violations": violations}, sort_keys=True))
+              raise SystemExit("STOP_ON_PROJECT_LOCAL_MANIFEST_POLICY_VIOLATION")
+
+          required = {
+              ".repowise",
+              ".repowise/wiki.db",
+              ".repowise/state.json",
+              ".repowise/config.yaml",
+              ".repowise/mcp.json",
+              ".mcp.json",
+              ".vscode",
+              ".vscode/mcp.json",
+              ".vscode/extensions.json",
+          }
+          missing = sorted(required - set(post))
+          if missing:
+              raise SystemExit("STOP_ON_EXPECTED_OUTPUT_MISSING:" + ",".join(missing))
+
+          print("PROJECT_LOCAL_MANIFEST_POLICY=PASS")
+          PY
+
+          test "$(git -C "$ORIGINAL" rev-parse HEAD)" = "$TARGET_SHA"
+          test "$(git -C "$ORIGINAL" rev-parse 'HEAD^{tree}')" = "$TARGET_TREE"
+          test -z "$(git -C "$ORIGINAL" status --porcelain=v1)"
+          echo "ORIGINAL_SOURCE_UNCHANGED=PASS"
+
+          test "$(git -C "$DISPOSABLE" rev-parse HEAD)" = "$TARGET_SHA"
+          test "$(git -C "$DISPOSABLE" rev-parse 'HEAD^{tree}')" = "$TARGET_TREE"
+          test -z "$(git -C "$DISPOSABLE" status --porcelain=v1 --untracked-files=no)"
+          echo "DISPOSABLE_TRACKED_SOURCE_UNCHANGED=PASS"
+
+      - name: Remove disposable copy and verify original source again
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "${DISPOSABLE:-}" && -d "$DISPOSABLE" ]]; then
+            rm -rf "$DISPOSABLE"
+          fi
+          test ! -e "${DISPOSABLE:-/nonexistent}"
+
+          if [[ -n "${ORIGINAL:-}" && -d "$ORIGINAL/.git" ]]; then
+            test "$(git -C "$ORIGINAL" rev-parse HEAD)" = "$TARGET_SHA"
+            test "$(git -C "$ORIGINAL" rev-parse 'HEAD^{tree}')" = "$TARGET_TREE"
+            test -z "$(git -C "$ORIGINAL" status --porcelain=v1)"
+            python3 "$ROOT/manifest.py" "$ORIGINAL" "$ROOT/results/original-final.json"
+            cmp "$ROOT/results/original-pre.json" "$ROOT/results/original-final.json"
+            echo "POST_TREATMENT_ORIGINAL_SOURCE=PASS"
+          fi
+
+      - name: Final rehearsal classification
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "REHEARSAL_RESULT=PASS"
+          echo "CONTAINMENT_MODEL=EPHEMERAL_DISPOSABLE_COPY_ONLY"
+          echo "PROJECT_LOCAL_MANIFEST=EXHAUSTIVE_PASS"
+          echo "OUTPUT_CLASS=PROVISIONAL_NON_CANONICAL"
+          echo "PRIVATE_TREATMENT_AUTHORIZED=FALSE"
+          echo "AUTHORITY_EFFECT=NONE"
