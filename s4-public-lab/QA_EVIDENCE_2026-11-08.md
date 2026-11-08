@@ -4,7 +4,8 @@
 **Scope:** Public static JavaScript/DOM simulator only — **NOT** the S4 Worker, React/Lovable integration, Supabase, Cloudflare, ChatGPT Voice, or durable memory.  
 **Repository:** `DETERMAai/determa-governed-execution-demo`  
 **Branch:** `s4-public-lab-2026-11-08` — isolated from `main`  
-**Reviewed source blob:** `d7e59bfea4b501bffb99669df36b88eda7cec805`  
+**Initial reviewed source blob:** `d7e59bfea4b501bffb99669df36b88eda7cec805`  
+**Current public UI blob (text/QA-link only follow-up):** `6790c78f9b951a6dd656cd2b17b56c5a601b37b3`  
 **Public UI:** [Open the simulator](https://htmlpreview.github.io/?https://github.com/DETERMAai/determa-governed-execution-demo/blob/s4-public-lab-2026-11-08/s4-public-lab/index.html)
 
 ## Direct browser testing
@@ -37,6 +38,8 @@ Chrome headless (CDP `Runtime.evaluate`, real DOM and two paint frames), fresh i
 The same source bytes, opened as a local HTML file (without the HTML Preview host), passed **19/19**, including a local-only assertion that the entire page loaded zero external resources.
 
 ## Why the public test count differs
+
+**Revalidation note (updated public UI):** With a fixed 250 ms post-action wait, one desktop headless run observed a delayed local visual receipt (17/18 behavior checks); a subsequent run with a 1,000 ms wait passed all 18/18 behavior checks at both 375px and 1440px. This is evidence of test timing sensitivity, not proof of a production defect. We therefore do not set a 250 ms visual receipt SLA or claim perfectly deterministic browser timing. The UI is still a local-only simulation.
 
 The nineteenth local-only check, `performance.getEntriesByType('resource').length===0`, was not applicable on the hosted preview: the *HTML Preview hosting service itself* loads the public source and related resources. This is **not evidence** that the GENIE simulator sends data to a backend. The simulator source contains no network API calls and declares `connect-src 'none'` in its CSP. We therefore exclude that invalid hosting-specific assertion from the public-site score, rather than call it a product failure or pretend it passed.
 
