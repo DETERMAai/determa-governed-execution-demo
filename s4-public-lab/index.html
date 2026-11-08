@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; img-src data:; font-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<title>GENIE by DETERMA · S4 Public Safety Lab</title>
+<style>
+:root{font-family:Arial,Helvetica,sans-serif;background:#070e1a;color:#ecf7fa;color-scheme:dark;font-size:15px;line-height:1.55}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse 100% 65% at 92% 0%,#123a4b 0%,#081522 49%,#070e1a 100%);min-height:100vh}
+button,select{font:inherit}button{cursor:pointer}button:focus-visible,select:focus-visible{outline:3px solid #75ece1;outline-offset:3px}
+.container{max-width:1120px;margin:0 auto;padding:24px 18px 48px}.topline{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}.logo{height:38px;width:38px;display:grid;place-items:center;border-radius:12px;background:#103e4a;color:#8af5e5;border:1px solid #369f9b;font-weight:800;font-size:20px;box-shadow:0 0 23px #15d5c51a}
+.brand strong{letter-spacing:2px;font-size:15px}.brand small{display:block;font-size:11px;letter-spacing:1px;color:#8db2c0}.pill{font-size:11px;font-weight:800;letter-spacing:.5px;border:1px solid #306a72;color:#a5f0e9;border-radius:999px;padding:7px 12px;background:#0a2b36}
+.hero{padding:44px 0 22px}.eyebrow{color:#77ddcd;letter-spacing:2px;font-size:12px;font-weight:700}.hero h1{font-size:clamp(30px,5vw,54px);letter-spacing:-1.5px;line-height:1.13;margin:12px 0 14px}.hero p{color:#abc5d0;font-size:16px;max-width:720px;margin:0 0 15px}.notice{border-right:3px solid #75cfce;background:#0c2835a8;padding:12px 16px;border-radius:6px;color:#cae2e7;font-size:13px;max-width:900px}
+.progress{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:26px 0}.step{padding:13px 8px;border:1px solid #26394d;background:#0f1c2b;border-radius:10px;text-align:center;font-size:12px;color:#a4b8c6}.step b{display:block;font-size:14px}.step.ok{background:#103b40;border-color:#32aa9d;color:#c5fff3}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);gap:18px}.card{background:linear-gradient(145deg,#102336,#0b1726);border:1px solid #2a4054;border-radius:18px;box-shadow:0 15px 50px #0003;padding:22px;min-width:0}.card h2{margin:0 0 6px;font-size:19px}.muted{color:#9eb8c7;font-size:13px;margin:0 0 18px}.field{display:flex;gap:10px;align-items:center;justify-content:space-between;margin:16px 0}.field label{color:#cbdee6;font-size:13px}.field select{max-width:62%;min-height:44px;padding:8px 11px;background:#0a1725;color:#e9f7fb;border:1px solid #3b5b6a;border-radius:10px}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btn{background:#193448;border:1px solid #476a76;color:#eefaff;border-radius:10px;min-height:46px;padding:10px 12px;font-weight:700;transition:filter .1s}.btn:hover:not(:disabled){filter:brightness(1.2)}.btn.primary{background:#19aa9f;color:#061e25;border-color:#48d7c7}.btn.danger{background:#422637;border-color:#885264}.btn:disabled{opacity:.42;cursor:not-allowed}.wide{grid-column:1/-1}
+.session{background:#0a1825;border:1px solid #2b4e5b;border-radius:12px;margin:18px 0 0;padding:14px}.session-head{display:flex;justify-content:space-between;gap:9px;align-items:center;font-size:12px;color:#9fbec8}.session-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:18px;letter-spacing:1.2px;color:#b1fff1;direction:ltr;text-align:right;margin-top:10px;word-break:break-all}
+.display{border:1px solid #2e6a6e;background:#0a212a;border-radius:15px;padding:18px;min-height:194px;position:relative;overflow:hidden}.display:before{content:"";height:120px;width:120px;border:1px solid #145d66;border-radius:100%;position:absolute;left:-37px;top:-42px;box-shadow:0 0 0 28px #06464a1a,0 0 0 56px #06464a12;pointer-events:none}.display-kicker{font-size:11px;letter-spacing:1px;color:#69dbce;margin:0 0 18px}.display h3{position:relative;font-size:25px;line-height:1.3;margin:0 0 7px}.display p{position:relative;font-size:15px;color:#c6e1e4;margin:0}.receipt{margin-top:16px;border:1px solid #36586e;border-radius:10px;padding:12px;font-family:ui-monospace,monospace;font-size:12px;color:#b7d7e1;min-height:64px;word-break:break-word}.receipt.good{border-color:#2a9a82;background:#0a302e}.receipt.bad{border-color:#9b665c;background:#372127}.audit{margin-top:18px}.audit h2{margin:0 0 8px;font-size:16px}ol{margin:0;padding:0 22px 0 0;max-height:215px;overflow:auto}li{color:#b9ced6;border-bottom:1px solid #263b4b;padding:7px 0;font-size:12px;overflow-wrap:anywhere}.grid-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.test-count{font-weight:800;color:#6ee4c9;font-size:21px}.caption{font-size:12px;color:#94acb7}.test-list{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}.test-item{border-radius:8px;border:1px solid #294b56;background:#0b2530;padding:8px 9px;font-size:12px;color:#c4e0e1}.test-item.bad{border-color:#995458;background:#372127}.footer{margin-top:21px;color:#8b9fae;font-size:12px}.footer strong{color:#b7d6db}#assertions{margin-top:16px}.test-heading{display:flex;gap:12px;align-items:center;justify-content:space-between}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:740px){.hero{padding-top:30px}.layout{grid-template-columns:1fr}.card{padding:17px}.progress{gap:5px}.step{padding:10px 3px;font-size:10px}.step b{font-size:12px}.test-list{grid-template-columns:1fr}.hero p{font-size:15px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main class="container">
+<header class="topline"><div class="brand"><span class="logo" aria-hidden="true">✦</span><div><strong>GENIE</strong><small>BY DETERMA · SECURITY LAB</small></div></div><span class="pill">S4 · PUBLIC SIMULATION · NO SERVER</span></header>
+<section class="hero"><div class="eyebrow">DETERMA / VOICE S4 / TEST LAB</div><h1>מהקול למסך.<br>עם שליטה ובקרה.</h1><p>בדיקת מסלול חיבור, פקודה, שינוי תצוגה, אישור וניתוק — באמצעות פקודות מדומות וחשבונות בדיקה. כל הפעולות מתבצעות בדף הזה בלבד.</p><div class="notice" role="note"><strong>הדגמה ציבורית בטוחה:</strong> אין כאן ChatGPT Voice חי, שרת S4, הזדהות Supabase, מסד נתונים, WhatsApp או מידע על לקוחות. אין לשלוח נתונים אישיים. כל המידע נעלם ברענון הדף.</div></section>
+<nav class="progress" aria-label="שלבי הבדיקה"><div id="s1" class="step"><b>01</b> חיבור</div><div id="s2" class="step"><b>02</b> פקודה</div><div id="s3" class="step"><b>03</b> אישור מסך</div><div id="s4" class="step"><b>04</b> ניתוק</div></nav>
+<section class="layout">
+<div class="card">
+<h2>עמדת בדיקה</h2><p class="muted">בחרו משתמש בדוי והפעילו פקודה שמייצגת בקשה קולית.</p>
+<div class="field"><label for="owner">חשבון בדיקה</label><select id="owner"><option value="a">משתמש א׳ · בעל העסק</option><option value="b">משתמש ב׳ · משתמש אחר</option></select></div>
+<div class="buttons">
+<button id="pair" class="btn primary">01 · צור חיבור מדומה</button><button id="disconnect" class="btn danger" disabled>04 · נתק וחסום</button>
+<button id="lead" class="btn" disabled>02 · הצג ליד חדש</button><button id="offer" class="btn" disabled>02 · הצג הצעה</button>
+<button id="statusBtn" class="btn wide" disabled>02 · הצג סטטוס עסק</button>
+<button id="cross" class="btn">בדיקה · פקודה ממשתמש זר</button><button id="stale" class="btn">בדיקה · פקודה ישנה</button>
+<button id="reset" class="btn wide">אפס את כל הסימולציה</button>
+</div>
+<div class="session"><div class="session-head"><span id="connection">מצב: מנותק</span><span id="ownerLabel">בעל חיבור: אין</span></div><div id="code" class="session-code" aria-live="polite">DEMO-ONLY · NO TOKEN</div></div>
+</div>
+<div class="card">
+<h2>תצוגת העסק</h2><p class="muted">השינוי נבדק ב־DOM לפני שנוצר אישור מקומי. אין אישור שרת.</p>
+<div class="display" id="businessView" data-state="idle"><div class="display-kicker" id="viewLabel">WORKSPACE / VIEW STATE</div><h3 id="viewTitle">ממתין לפקודה מדומה</h3><p id="viewDetail">צרו חיבור כדי להתחיל בבדיקה.</p></div>
+<div class="receipt" id="receipt" role="status" aria-live="polite">RECEIPT: NOT_RUN · לא נשלח דבר לשרת</div>
+<div class="audit"><h2>יומן בדיקות מקומי</h2><ol id="auditList" aria-label="יומן אירועים"><li>הדף נטען. כל הפעולות מדומות ומקומיות.</li></ol></div>
+</div>
+</section>
+<section class="card" id="assertions" aria-label="בדיקות אוטומטיות">
+<div class="test-heading"><div><h2>בדיקות אבטחה עצמאיות</h2><p class="muted" style="margin-bottom:0">בדיקות בדפדפן על מנוע ההדגמה — לא על שרת S4.</p></div><div id="testCount" class="test-count" aria-live="polite">ממתין</div></div>
+<div id="testItems" class="test-list"></div><div class="grid-row" style="margin-top:14px"><span class="caption">זהויות ופקודות מומצאות. אין בקשות רשת בקוד ההדגמה.</span><button id="tests" class="btn">הרץ בדיקות שוב</button></div>
+</section>
+<footer class="footer"><strong>GENIE by DETERMA · S4 PUBLIC SAFETY LAB</strong> · סימולציית UI עצמאית לצורכי בדיקה בלבד · לא ראיית פריסה, אישור קוד, רציפות בין מכשירים או זיכרון ענן · <span id="build">8.11.2026 / LAB-01</span></footer>
+</main>
+<script>
+(function () {
+'use strict';
+const $ = (id) => document.getElementById(id);
+const s = {owner:'a', active:false, epoch:0, generation:0, serial:0, command:false, ack:false, disconnected:false, auditSeq:0};
+function audit(message) {const el=document.createElement('li');el.textContent=String(++s.auditSeq).padStart(2,'0')+' · '+message;$('auditList').prepend(el);while($('auditList').children.length>18)$('auditList').lastElementChild.remove();}
+function receipt(message,kind) {$('receipt').textContent='RECEIPT: '+message;$('receipt').className='receipt '+(kind||'');}
+function steps() {['s1','s2','s3','s4'].forEach((id,index)=>$(id).classList.toggle('ok',[s.active||s.command||s.ack||s.disconnected,s.command||s.ack||s.disconnected,s.ack||s.disconnected,s.disconnected][index]));}
+function controls() {$('pair').disabled=s.active; $('disconnect').disabled=!s.active;['lead','offer','statusBtn'].forEach(k=>$(k).disabled=!s.active);$('ownerLabel').textContent='בעל חיבור: '+(s.active?s.owner==='a'?'משתמש א׳':'משתמש ב׳':'אין');$('connection').textContent='מצב: '+(s.active?'מחובר · מדומה':'מנותק');$('code').textContent=s.active?'DEMO-SESSION-'+String(s.serial).padStart(4,'0')+' · NOT A TOKEN':'DEMO-ONLY · NO TOKEN';steps();}
+function resetView() {$('businessView').dataset.state='idle';$('viewLabel').textContent='WORKSPACE / VIEW STATE';$('viewTitle').textContent='ממתין לפקודה מדומה';$('viewDetail').textContent='צרו חיבור כדי להתחיל בבדיקה.';}
+function invalidate(why) {const was=s.active;s.active=false;s.epoch++;s.generation++;s.disconnected=was||s.disconnected;s.ack=false;s.command=false;resetView();controls();receipt('DISCONNECTED_LOCAL · NO SERVER ACK','bad');if(was)audit('חיבור בוטל מיידית: '+why);}
+function connect() {if(s.active)return;s.active=true;s.serial++;s.generation++;s.epoch++;s.command=false;s.ack=false;s.disconnected=false;controls();receipt('LOCAL_PAIR_CREATED · SIMULATION ONLY','');audit('חיבור מדומה נוצר למשתמש '+(s.owner==='a'?'א׳':'ב׳'));resetView();}
+function commandAllowed(owner,generation){return s.active && owner===s.owner && generation===s.generation;}
+function command(kind, owner, generation) {
+if(!commandAllowed(owner,generation)){receipt('REJECTED · OWNER OR GENERATION MISMATCH','bad');audit('פקודה נחסמה: זהות שגויה, אירוע ישן או ניתוק');return false;}
+const versions={lead:['ליד חדש זוהה','לקוח לדוגמה ביקש הצעת שירות. שום הודעה לא נשלחה.'],offer:['הצעה מוכנה לבדיקה','הצעת מחיר מדומה: 480 ₪ · לא נוצר חיוב.'],status:['סטטוס עסק · דמו','3 פניות בדויות · 1 הצעה מדומה · 0 פעולות אמיתיות']};
+const content=versions[kind];if(!content)return false;
+s.command=true;s.ack=false;steps();$('viewLabel').textContent='WORKSPACE / SIMULATED '+kind.toUpperCase();$('viewTitle').textContent=content[0];$('viewDetail').textContent=content[1];$('businessView').dataset.state=kind;receipt('UI_UPDATE_PENDING · WAITING FOR DOM','');audit('פקודה מדומה התקבלה; שינוי תצוגה בוצע');
+const ticket={epoch:s.epoch,generation:s.generation,owner:s.owner,kind:kind,title:content[0]};
+requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!commandAllowed(ticket.owner,ticket.generation)||s.epoch!==ticket.epoch){audit('אישור מאוחר נדחה לאחר החלפת משתמש/ניתוק');return;}const committed=$('businessView').dataset.state===ticket.kind && $('viewTitle').textContent===ticket.title;if(!committed){receipt('REJECTED · DOM NOT CONFIRMED','bad');audit('התצוגה לא אומתה; אין אישור');return;}s.ack=true;steps();receipt('BROWSER_APPLIED_LOCAL · DOM VERIFIED · NO SERVER','good');audit('שינוי DOM אומת. נוצר אישור בדפדפן בלבד');}));
+return true;
+}
+$('owner').addEventListener('change',function(){if(s.active)invalidate('החלפת חשבון');s.owner=this.value;s.epoch++;s.generation++;controls();audit('נבחר משתמש בדיקה '+(s.owner==='a'?'א׳':'ב׳'));});
+$('pair').addEventListener('click',connect);
+$('disconnect').addEventListener('click',()=>invalidate('לחיצה על ניתוק'));
+$('lead').addEventListener('click',()=>command('lead',s.owner,s.generation));
+$('offer').addEventListener('click',()=>command('offer',s.owner,s.generation));
+$('statusBtn').addEventListener('click',()=>command('status',s.owner,s.generation));
+$('cross').addEventListener('click',()=>command('lead',s.owner==='a'?'b':'a',s.generation));
+$('stale').addEventListener('click',()=>command('offer',s.owner,s.generation-1));
+$('reset').addEventListener('click',()=>{invalidate('איפוס');s.serial=0;s.command=false;s.ack=false;s.disconnected=false;$('owner').value='a';s.owner='a';controls();receipt('RESET_LOCAL · NO SERVER','');audit('כל מצב ההדגמה אופס');});
+function pureAccept(v,owner,generation){return v.active===true && v.owner===owner && v.generation===generation;}
+function test(name,result){const x=document.createElement('div');x.className='test-item'+(result?'':' bad');x.textContent=(result?'✓ ':'✕ ')+name;$('testItems').appendChild(x);return result;}
+function runTests(){
+$('testItems').replaceChildren();const v={active:false,owner:'a',generation:4};let passed=0;
+passed+=+test('ברירת מחדל: ללא חיבור אין פקודה',!pureAccept(v,'a',4));
+v.active=true;passed+=+test('פקודת בעל החשבון מתקבלת',pureAccept(v,'a',4));
+passed+=+test('משתמש אחר נחסם',!pureAccept(v,'b',4));
+passed+=+test('פקודה מדור ישן נחסמת',!pureAccept(v,'a',3));
+v.active=false;passed+=+test('ניתוק מבטל פקודות',!pureAccept(v,'a',4));
+v.active=true;v.generation=5;passed+=+test('חיבור חדש לא מאפשר שימוש חוזר',!pureAccept(v,'a',4));
+v.owner='b';passed+=+test('החלפת משתמש מבטלת בעלות קודמת',!pureAccept(v,'a',5));
+passed+=+test('ממשק עברית; מצב מדומה בלבד',document.documentElement.dir==='rtl' && !document.querySelector('script[src]') && !document.querySelector('form[action]'));
+$('testCount').textContent=passed+'/8 '+(passed===8?'PASS':'FAIL');
+$('testCount').style.color=passed===8?'#6ee4c9':'#ff908a';
+audit('בדיקות אוטומטיות: '+passed+'/8');
+}
+$('tests').addEventListener('click',runTests);
+controls();runTests();
+})();
+</script>
+</body>
+</html>
